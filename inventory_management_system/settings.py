@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,7 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'jet',
+    'adminui',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,8 +59,8 @@ ROOT_URLCONF = 'inventory_management_system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [
-            BASE_DIR / "templates"
+        'DIRS': [os.path.join
+        (BASE_DIR / "adminui/templates")
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -138,32 +139,32 @@ STATICFILES_DIRS = [
     BASE_DIR,"static",
 ]
 
-JET_DEFAULT_THEME = 'light-gray'
-JET_SIDE_MENU_COMPACT = True
-JET_THEME = [
-    {
-        'theme': 'default',
-        'color': '#47bac1',
-        'title': 'Default'
-    },
-    {
-        'theme': 'green',
-        'color': '#44b78b',
-        'title': 'Green'
-    },
-    {
-        'theme': 'light-violet',
-        'color': '#a46c4',
-        'title': 'Light Violet'
-    },
-    {
-        'theme': 'light-blue',
-        'color': '#5EADDE',
-        'title': 'Light Blue'
-    },
-{
-        'theme': 'light-gray',
-        'color': '#222',
-        'title': 'Light Blue'
-    },
-]
+# JET_DEFAULT_THEME = 'light-gray'
+# JET_SIDE_MENU_COMPACT = True
+# JET_THEME = [
+#     {
+#         'theme': 'default',
+#         'color': '#47bac1',
+#         'title': 'Default'
+#     },
+#     {
+#         'theme': 'green',
+#         'color': '#44b78b',
+#         'title': 'Green'
+#     },
+#     {
+#         'theme': 'light-violet',
+#         'color': '#a46c4',
+#         'title': 'Light Violet'
+#     },
+#     {
+#         'theme': 'light-blue',
+#         'color': '#5EADDE',
+#         'title': 'Light Blue'
+#     },
+# {
+#         'theme': 'light-gray',
+#         'color': '#222',
+#         'title': 'Light Blue'
+#     },
+# ]

@@ -16,11 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-
 from inventory_management_system import views
 
+
+admin.site.index_title = "Dashboard"
+
 urlpatterns = [
-    path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
+    #path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
     path('', views.homepage),
     #path('users/', include('users.urls') )

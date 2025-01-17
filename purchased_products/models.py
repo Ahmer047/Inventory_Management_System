@@ -106,3 +106,35 @@ class Stock(models.Model):
 #============================================== Stock Model ==============================================#
     
 
+class Sale(models.Model):
+    SALE_ID_LENGTH = 10  # Define a standard length for Sale_ID
+    
+    sale_id = models.CharField(max_length=SALE_ID_LENGTH)  # Repeatable Sale_ID for multiple products
+    product_ID = models.ForeignKey('Products', on_delete=models.CASCADE)  # Link to product
+    product_name = models.CharField(max_length=255, editable=False)  # Auto-filled from Stock
+    category_id = models.IntegerField(editable=False)  # Auto-filled from Stock
+    category_name = models.CharField(max_length=255, editable=False)  # Auto-filled from Stock
+    current_sell_price = models.DecimalField(max_digits=10, decimal_places=2, editable=False)  # Auto-filled from Stock
+    quantity = models.PositiveIntegerField()  # Quantity purchased
+    total = models.DecimalField(max_digits=10, decimal_places=2, editable=False)  # Calculated total
+    PAYMENT_METHODS = (
+        ('Cash', 'Cash'),
+        ('Card', 'Card'),
+        ('Online', 'Online'),
+    )
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHODS, default='Cash')
+
+    def save(self, *args, **kwargs):
+        # Auto-populate fields from Stock
+        stock_entry = Stock.objects.filter(product_ID=self.product_ID).first()
+        if stock_entry:
+            self.product_name = stock_entry.product_name
+            self.category_id = stock_entry.category_id
+            self.category_name = stock_entry.category_name
+            self.current_sell_price = stock_entry.current_sell_price
+            self.total = self.quantity * self.current_sell_price  # Calculate total cost
+        super(Sale, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Sale ID: {self.sale_id} - Product: {self.product_name} - Total: {self.total}"
+

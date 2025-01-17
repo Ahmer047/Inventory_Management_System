@@ -106,40 +106,12 @@ admin.site.register(ProductPricing, AdminProductPricing)
 
 #============================================== Admin Stock View Model ==============================================#
 
-from django.contrib import admin
-from .models import Stock, ProductPricing
-
 class StockAdmin(admin.ModelAdmin):
     list_display = ('product_ID', 'product_name', 'category_id', 'category_name', 'current_sell_price', 'available_stock')
     search_fields = ('product_ID__product_name', 'category_name')
     
-    # Custom methods to fetch product_name, category_id, and category_name
-    def product_name(self, obj):
-        return obj.product_ID.product_name
-    
-    def current_sell_price(self, obj):
-        # Get the latest sell price from ProductPricing
-        latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-        if latest_pricing:
-            return latest_pricing.sell_price
-        return "N/A"
-
-    def category_id(self, obj):
-        # Get the category ID from ProductPricing
-        latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-        if latest_pricing:
-            return latest_pricing.category_id
-        return "N/A"
-
-    def category_name(self, obj):
-        # Get the category name from ProductPricing
-        latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-        if latest_pricing:
-            return latest_pricing.category_name
-        return "N/A"
-
     # Exclude fields that should not be manually edited
-    exclude = ('current_sell_price', 'category_id', 'category_name')
+    exclude = ('current_sell_price', 'category_id', 'category_name', 'product_name')
     
     def save_model(self, request, obj, form, change):
         # Check if a Stock entry for the product_ID already exists
@@ -152,9 +124,11 @@ class StockAdmin(admin.ModelAdmin):
                 existing_stock.current_sell_price = latest_pricing.sell_price
                 existing_stock.category_id = latest_pricing.category_id
                 existing_stock.category_name = latest_pricing.category_name
+                existing_stock.product_name = obj.product_ID.product_name
             existing_stock.save()
         else:
             # No existing entry, create a new one
+            obj.product_name = obj.product_ID.product_name
             latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
             if latest_pricing:
                 obj.current_sell_price = latest_pricing.sell_price
@@ -165,13 +139,11 @@ class StockAdmin(admin.ModelAdmin):
 # Register the Stock model in the admin
 admin.site.register(Stock, StockAdmin)
 
-
-
 # class StockAdmin(admin.ModelAdmin):
-#     list_display = ('product_ID', 'product_name', 'current_sell_price', 'available_stock')
-#     search_fields = ('product_ID__product_name',)
+#     list_display = ('product_ID', 'product_name', 'category_id', 'category_name', 'current_sell_price', 'available_stock')
+#     search_fields = ('product_ID__product_name', 'category_name')
     
-#     # Customize the form to show the dropdown and automatically fill the product_name and sell price
+#     # Custom methods to fetch product_name, category_id, and category_name
 #     def product_name(self, obj):
 #         return obj.product_ID.product_name
     
@@ -181,15 +153,72 @@ admin.site.register(Stock, StockAdmin)
 #         if latest_pricing:
 #             return latest_pricing.sell_price
 #         return "N/A"
-    
-#     # Exclude the current_sell_price from the form to prevent asking for it
-#     exclude = ('current_sell_price',)
-    
-#     def save_model(self, request, obj, form, change):
-#         # Automatically set the current_sell_price before saving the model
+
+#     def category_id(self, obj):
+#         # Get the category ID from ProductPricing
 #         latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
 #         if latest_pricing:
-#             obj.current_sell_price = latest_pricing.sell_price
-#         super().save_model(request, obj, form, change)
+#             return latest_pricing.category_id
+#         return "N/A"
 
+#     def category_name(self, obj):
+#         # Get the category name from ProductPricing
+#         latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
+#         if latest_pricing:
+#             return latest_pricing.category_name
+#         return "N/A"
+
+#     # Exclude fields that should not be manually edited
+#     exclude = ('current_sell_price', 'category_id', 'category_name')
+    
+#     def save_model(self, request, obj, form, change):
+#         # Check if a Stock entry for the product_ID already exists
+#         existing_stock = Stock.objects.filter(product_ID=obj.product_ID).first()
+#         if existing_stock:
+#             # Update the existing stock entry
+#             existing_stock.available_stock += obj.available_stock  # Increment available stock
+#             latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
+#             if latest_pricing:
+#                 existing_stock.current_sell_price = latest_pricing.sell_price
+#                 existing_stock.category_id = latest_pricing.category_id
+#                 existing_stock.category_name = latest_pricing.category_name
+#             existing_stock.save()
+#         else:
+#             # No existing entry, create a new one
+#             latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
+#             if latest_pricing:
+#                 obj.current_sell_price = latest_pricing.sell_price
+#                 obj.category_id = latest_pricing.category_id
+#                 obj.category_name = latest_pricing.category_name
+#             super().save_model(request, obj, form, change)
+
+# # Register the Stock model in the admin
 # admin.site.register(Stock, StockAdmin)
+
+
+#============================================== Admin Sales View Model ==============================================#
+
+
+from django.contrib import admin
+from .models import Sale
+
+class SaleAdmin(admin.ModelAdmin):
+    list_display = ('sale_id', 'product_ID', 'product_name', 'category_name', 'current_sell_price', 'quantity', 'total', 'payment_method')
+    search_fields = ('sale_id', 'product_name', 'category_name')
+
+    # Exclude fields that should not be manually edited
+    exclude = ('product_name', 'category_id', 'category_name', 'current_sell_price', 'total')
+
+    def save_model(self, request, obj, form, change):
+        # Auto-populate fields from Stock before saving
+        stock_entry = Stock.objects.filter(product_ID=obj.product_ID).first()
+        if stock_entry:
+            obj.product_name = stock_entry.product_name
+            obj.category_id = stock_entry.category_id
+            obj.category_name = stock_entry.category_name
+            obj.current_sell_price = stock_entry.current_sell_price
+            obj.total = obj.quantity * obj.current_sell_price
+        super().save_model(request, obj, form, change)
+
+# Register the Sale model in the admin
+admin.site.register(Sale, SaleAdmin)
