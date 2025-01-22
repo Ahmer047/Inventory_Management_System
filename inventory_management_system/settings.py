@@ -32,7 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'adminui',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users',
     'suppliers',
-    'purchased_products'
+    'purchased_products',
+    'adminui',
 ]
 
 MIDDLEWARE = [
@@ -60,7 +61,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join
-        (BASE_DIR / "adminui/templates")
+        (BASE_DIR / "templates")
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -139,32 +140,47 @@ STATICFILES_DIRS = [
     BASE_DIR,"static",
 ]
 
-# JET_DEFAULT_THEME = 'light-gray'
-# JET_SIDE_MENU_COMPACT = True
-# JET_THEME = [
-#     {
-#         'theme': 'default',
-#         'color': '#47bac1',
-#         'title': 'Default'
-#     },
-#     {
-#         'theme': 'green',
-#         'color': '#44b78b',
-#         'title': 'Green'
-#     },
-#     {
-#         'theme': 'light-violet',
-#         'color': '#a46c4',
-#         'title': 'Light Violet'
-#     },
-#     {
-#         'theme': 'light-blue',
-#         'color': '#5EADDE',
-#         'title': 'Light Blue'
-#     },
-# {
-#         'theme': 'light-gray',
-#         'color': '#222',
-#         'title': 'Light Blue'
-#     },
-# ]
+
+
+JAZZMIN_SETTINGS = {
+        "show_ui_builder": True,
+
+        "site_title": "IMS",
+
+        # Copyright on the footer
+        "copyright": "Inventory Management System",
+}
+
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": True,
+    "brand_small_text": False,
+    "brand_colour": False,
+    "accent": "accent-primary",
+    "navbar": "navbar-white navbar-light",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": True,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": True,
+    "sidebar_nav_legacy_style": True,
+    "sidebar_nav_flat_style": True,
+    "theme": "litera",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-outline-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    },
+    "actions_sticky_top": False
+}
