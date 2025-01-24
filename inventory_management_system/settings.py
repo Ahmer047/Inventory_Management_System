@@ -61,7 +61,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join
-        (BASE_DIR / "templates")
+        (BASE_DIR / "adminui/templates")
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -143,6 +143,8 @@ STATICFILES_DIRS = [
 
 
 JAZZMIN_SETTINGS = {
+        "custom_css": "adminui/static/admin/css/custom.css",
+
         "show_ui_builder": True,
 
         "site_title": "IMS",

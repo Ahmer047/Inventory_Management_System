@@ -1,0 +1,25 @@
+
+#jazzy-navbar {
+    background-color: #417690 !important;
+    /* color: white; */
+}
+
+#jazzy-sidebar {
+    background-color: #417690 !important;
+    color: white;
+}
+
+.nav-link {
+    color: white ! important;
+}
+
+
+/* #navbar-nav {
+    border-style: none;
+    color: #417690;
+} */
+
+/* If the above doesn't work, try this more specific selector */
+/* .nav-sidebar .nav-item {
+    background-color: #your-color !important;
+} */

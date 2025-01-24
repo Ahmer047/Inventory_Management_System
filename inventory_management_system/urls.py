@@ -25,5 +25,4 @@ urlpatterns = [
     #path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
     path('', views.homepage),
-    #path('users/', include('users.urls') )
 ]

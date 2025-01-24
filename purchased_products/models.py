@@ -62,6 +62,7 @@ class ProductPricing(models.Model):
     category_name = models.CharField(max_length=255, editable=False)  # New field for category name
     profit_margin = models.DecimalField(max_digits=5, decimal_places=2)  # Percentage profit margin
     sell_price = models.DecimalField(max_digits=10, decimal_places=2)  # Calculated sell price
+    is_current = models.BooleanField(default=False)  # Add this line
 
     def save(self, *args, **kwargs):
         # Automatically fetch product_name, category_id, category_name and calculate sell_price before saving
@@ -69,8 +70,11 @@ class ProductPricing(models.Model):
             self.product_name = self.product_ID.product_name
             self.category_id = self.product_ID.category.category_id  # Fetch category_id
             self.category_name = self.product_ID.category.category_name  # Fetch category_name
-            price_per_unit = self.product_ID.purchased_products.first().price_per_unit
+            price_per_unit = self.product_ID.purchased_products.order_by('-purchased_invoice').first().price_per_unit
             self.sell_price = price_per_unit + (price_per_unit * (self.profit_margin / 100))
+            print(price_per_unit)
+            print(self.profit_margin)            
+            print(self.sell_price)
         super(ProductPricing, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -103,7 +107,7 @@ class Stock(models.Model):
         return f"{self.product_name} - Available Stock: {self.available_stock} - Sell Price: {self.current_sell_price} - Category: {self.category_name}"
 
 
-#============================================== Stock Model ==============================================#
+#============================================== Sales Model ==============================================#
     
 
 class Sale(models.Model):
