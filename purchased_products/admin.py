@@ -2,10 +2,13 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from .models import ProductPricing, Products, Stock, category, PurchasedProducts
+from .models import ProductPricing, Products, Stock, category, PurchasedProducts, Sale
 from django.forms import ValidationError
 from django import forms
 from django.shortcuts import redirect
+from django.urls import path
+from django.utils.html import format_html
+from django.db.models import Sum
 
 
 #============================================== Admin Category View Model ==============================================#
@@ -22,39 +25,6 @@ admin.site.register(category, categoryAdmin)
 
 
 #============================================== Admin Product View Model ==============================================#
-
-# # Custom form for validation
-# class ProductsForm(forms.ModelForm):
-#     class Meta:
-#         model = Products
-#         fields = ['product_ID', 'product_name', 'category']
-
-#     def clean_product_ID(self):
-#         product_ID = self.cleaned_data.get('product_ID')
-#         if Products.objects.filter(product_ID=product_ID).exists():
-#             raise ValidationError("Product with this ID already exists.")
-#         return product_ID
-
-
-# # Custom admin for Products
-# class adminProducts(admin.ModelAdmin):
-#     list_display = ['product_ID', 'product_name', 'category']
-#     list_display_links = ['product_name']  # Make 'product_name' the clickable link
-#     search_fields = ['product_ID', 'category', 'product_name']
-#     list_filter = ['product_name', 'category']
-#     list_editable = ['category']  # Keep 'product_name' editable if desired
-#     #readonly_fields = ('product_ID',)
-#     list_per_page = 20
-
-#     def save_model(self, request, obj, form, change):
-#         # Ensure category_name is set before saving
-#         if obj.category:
-#             obj.category_name = obj.category.category_name  # Assuming `name` is the field for category name
-#         super().save_model(request, obj, form, change)
-
-
-# admin.site.register(Products, adminProducts)
-
 
 # Custom form for validation
 class ProductsForm(forms.ModelForm):
@@ -158,48 +128,6 @@ class PurchasedProductsAdmin(admin.ModelAdmin):
 
 admin.site.register(PurchasedProducts, PurchasedProductsAdmin)
 
-# class PurchasedProductsAdmin(admin.ModelAdmin):
-#     list_display = ['purchased_invoice', 'product', 'product_name', 'price_per_unit', 
-#                     'piece_quantity', 'category', 'supplier']
-#     search_fields = ['purchased_invoice', 'product__product_name', 'product__category__category_name']
-#     list_filter = ['product__product_name', 'product__category__category_name', 'supplier']
-#     list_editable = ['product', 'price_per_unit', 'piece_quantity', 'supplier']
-#     readonly_fields = ('product_name', 'category')
-#     list_per_page = 20
-
-#     def get_form(self, request, obj=None, **kwargs):
-#             form = super().get_form(request, obj, **kwargs)
-#             # If you need any form customization, add it here
-#             return form
-
-#     def save_model(self, request, obj, form, change):
-#         """
-#         Override save_model to redirect to Product Pricing admin page
-#         after saving a new PurchasedProducts entry.
-#         """
-#         # Populate product_name and category fields
-#         if obj.product:
-#             obj.product_name = obj.product.product_name
-#             obj.category = obj.product.category
-#         super().save_model(request, obj, form, change)
-
-
-#     def response_add(self, request, obj, post_url_continue=None):
-#         """
-#         Redirect to ProductPricing admin page after adding a new PurchasedProducts entry.
-#         """
-#         if "_continue" in request.POST or "_addanother" in request.POST:
-#             # If user chose to "Save and continue editing" or "Save and add another"
-#             return super().response_add(request, obj, post_url_continue)
-
-#         # Redirect to ProductPricing changelist page
-#         product_pricing_url = reverse('admin:purchased_products_productpricing_changelist')
-#         return redirect(product_pricing_url)
-
-
-# admin.site.register(PurchasedProducts, PurchasedProductsAdmin)
-
-
 
 #============================================== Admin Product_Pricing View Model ==============================================
 
@@ -282,86 +210,61 @@ class StockAdmin(admin.ModelAdmin):
 admin.site.register(Stock, StockAdmin)
 
 
-# class StockAdmin(admin.ModelAdmin):
-#     list_display = ('product_ID', 'product_name', 'category_id', 'category_name', 'current_sell_price', 'available_stock')
-#     search_fields = ('product_ID__product_name', 'category_name')
-    
-#     # Custom methods to fetch product_name, category_id, and category_name
-#     def product_name(self, obj):
-#         return obj.product_ID.product_name
-    
-#     def current_sell_price(self, obj):
-#         # Get the latest sell price from ProductPricing
-#         latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-#         if latest_pricing:
-#             return latest_pricing.sell_price
-#         return "N/A"
-
-#     def category_id(self, obj):
-#         # Get the category ID from ProductPricing
-#         latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-#         if latest_pricing:
-#             return latest_pricing.category_id
-#         return "N/A"
-
-#     def category_name(self, obj):
-#         # Get the category name from ProductPricing
-#         latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-#         if latest_pricing:
-#             return latest_pricing.category_name
-#         return "N/A"
-
-#     # Exclude fields that should not be manually edited
-#     exclude = ('current_sell_price', 'category_id', 'category_name')
-    
-#     def save_model(self, request, obj, form, change):
-#         # Check if a Stock entry for the product_ID already exists
-#         existing_stock = Stock.objects.filter(product_ID=obj.product_ID).first()
-#         if existing_stock:
-#             # Update the existing stock entry
-#             existing_stock.available_stock += obj.available_stock  # Increment available stock
-#             latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-#             if latest_pricing:
-#                 existing_stock.current_sell_price = latest_pricing.sell_price
-#                 existing_stock.category_id = latest_pricing.category_id
-#                 existing_stock.category_name = latest_pricing.category_name
-#             existing_stock.save()
-#         else:
-#             # No existing entry, create a new one
-#             latest_pricing = ProductPricing.objects.filter(product_ID=obj.product_ID).order_by('-id').first()
-#             if latest_pricing:
-#                 obj.current_sell_price = latest_pricing.sell_price
-#                 obj.category_id = latest_pricing.category_id
-#                 obj.category_name = latest_pricing.category_name
-#             super().save_model(request, obj, form, change)
-
-# # Register the Stock model in the admin
-# admin.site.register(Stock, StockAdmin)
-
 
 #============================================== Admin Sales View Model ==============================================#
 
 
-from django.contrib import admin
-from .models import Sale
+# from django.contrib import admin
+# from .models import Sale
+
+# class SaleAdmin(admin.ModelAdmin):
+#     list_display = ('sale_id', 'product_ID', 'product_name', 'category_name', 'current_sell_price', 'quantity', 'total', 'payment_method')
+#     search_fields = ('sale_id', 'product_name', 'category_name')
+
+#     # Exclude fields that should not be manually edited
+#     exclude = ('product_name', 'category_id', 'category_name', 'current_sell_price', 'total')
+
+#     def save_model(self, request, obj, form, change):
+#         # Auto-populate fields from Stock before saving
+#         stock_entry = Stock.objects.filter(product_ID=obj.product_ID).first()
+#         if stock_entry:
+#             obj.product_name = stock_entry.product_name
+#             obj.category_id = stock_entry.category_id
+#             obj.category_name = stock_entry.category_name
+#             obj.current_sell_price = stock_entry.current_sell_price
+#             obj.total = obj.quantity * obj.current_sell_price
+#         super().save_model(request, obj, form, change)
+
+# # Register the Sale model in the admin
+# admin.site.register(Sale, SaleAdmin)
+
+
 
 class SaleAdmin(admin.ModelAdmin):
-    list_display = ('sale_id', 'product_ID', 'product_name', 'category_name', 'current_sell_price', 'quantity', 'total', 'payment_method')
-    search_fields = ('sale_id', 'product_name', 'category_name')
+    list_display = ('sale_id', 'product_name', 'quantity', 'current_sell_price', 'total', 'payment_method', 'created_at', 'actions_button')
+    list_filter = ('sale_id', 'payment_method', 'created_at')
+    search_fields = ('sale_id', 'product_name')
+    readonly_fields = ('product_name', 'category_id', 'category_name', 'current_sell_price', 'total')
+    list_per_page = 20
 
-    # Exclude fields that should not be manually edited
-    exclude = ('product_name', 'category_id', 'category_name', 'current_sell_price', 'total')
+    def actions_button(self, obj):
+        return format_html(
+            '<a class="button" href="{}">New Sale</a>',
+            '/sales/create/'
+        )
+    actions_button.short_description = "Actions"
 
-    def save_model(self, request, obj, form, change):
-        # Auto-populate fields from Stock before saving
-        stock_entry = Stock.objects.filter(product_ID=obj.product_ID).first()
-        if stock_entry:
-            obj.product_name = stock_entry.product_name
-            obj.category_id = stock_entry.category_id
-            obj.category_name = stock_entry.category_name
-            obj.current_sell_price = stock_entry.current_sell_price
-            obj.total = obj.quantity * obj.current_sell_price
-        super().save_model(request, obj, form, change)
+    def changelist_view(self, request, extra_context=None):
+        # Calculate total sales
+        total_sales = Sale.objects.aggregate(
+            total_amount=Sum('total')
+        )['total_amount'] or 0
 
-# Register the Sale model in the admin
+        extra_context = extra_context or {}
+        extra_context['total_sales'] = total_sales
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def has_add_permission(self, request):
+        return False  # Prevent manual addition through admin
+
 admin.site.register(Sale, SaleAdmin)

@@ -25,4 +25,5 @@ urlpatterns = [
     #path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
     path('', views.homepage),
+    path('sales/', include('purchased_products.urls')),  # Ensure this exists
 ]

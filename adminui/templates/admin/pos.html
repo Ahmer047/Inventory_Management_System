@@ -1,0 +1,218 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+
+
+<div class="container">
+    <div class="row">
+          <!-- Left side - Product Entry -->
+        <div class="col-md-4">
+            <div class="form-group">
+                <label>Enter Barcode/Product ID:</label>
+                <!-- Input field with datalist for dropdown -->
+                <input type="text" id="product-id" class="form-control" list="product-list" autocomplete="off">
+                <datalist id="product-list">
+                    {% for stock in stocks %}
+                        <option value="{{ stock.product_ID.product_ID }}">{{ stock.product_name }}</option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label>Quantity:</label>
+                <input type="number" id="quantity" class="form-control" value="1" min="1">
+            </div>
+            <button onclick="addToCart()" class="btn btn-primary">Add</button>
+        </div>
+
+
+        <!-- Right side - Cart -->
+        <div class="col-md-8">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="cart-items">
+                    {% for item in cart_items %}
+                    <tr>
+                        <td>{{ item.product_name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.price }}</td>
+                        <td>{{ item.total }}</td>
+                        <!-- <td><button onclick="removeItem({{ forloop.counter0 }})" class="btn btn-danger">Delete</button></td> -->
+                        <td><button onclick="removeItem('{{ forloop.counter0|safe }}')" class="btn btn-danger">Delete</button></td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="text-right">
+                <h3>Gross Total: <span id="gross-total">{{ total_amount }}</span></h3>
+                <select id="payment-method" class="form-control">
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="Online">Online</option>
+                </select>
+                <button onclick="checkout()" class="btn btn-success">Checkout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+ 
+function addToCart() {
+    const productId = document.getElementById('product-id').value;
+    const quantity = document.getElementById('quantity').value;
+
+    if (!productId) {
+        showError('Please enter a product ID');
+        return;
+    }
+
+    if (quantity < 1) {
+        showError('Quantity must be at least 1');
+        return;
+    }
+
+    fetch('/sales/add-to-cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+            product_id: parseInt(productId),
+            quantity: parseInt(quantity)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showSuccess('Item added to cart');
+            document.getElementById('product-id').value = '';
+            document.getElementById('quantity').value = '1';
+            document.getElementById('product-id').focus();
+
+            // Dynamically update the cart table
+            updateCartTable(data.item);
+        } else {
+            showError(data.message || 'Error adding item to cart');
+        }
+    })
+    .catch(error => {
+        showError('Error adding item to cart');
+        console.error('Error:', error);
+    });
+}
+
+
+function updateCartTable(item) {
+    const cartItemsTable = document.getElementById('cart-items');
+    const newRow = document.createElement('tr');
+
+    newRow.innerHTML = `
+        <td>${item.product_name}</td>
+        <td>${item.quantity}</td>
+        <td>${item.price}</td>
+        <td>${item.total}</td>
+        <td><button onclick="removeItem(${cartItemsTable.children.length})" class="btn btn-danger">Delete</button></td>
+    `;
+
+    cartItemsTable.appendChild(newRow);
+
+    // Update the gross total
+    updateGrossTotal(item.total);
+}
+
+function updateGrossTotal(amount) {
+    const grossTotalElement = document.getElementById('gross-total');
+    const currentTotal = parseFloat(grossTotalElement.textContent) || 0;
+    grossTotalElement.textContent = (currentTotal + amount).toFixed(2);
+}
+
+
+function showError(message) {
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 3000);
+    } else {
+        alert(message);  // Fallback if error div doesn't exist
+    }
+}
+
+function showSuccess(message) {
+    const successDiv = document.getElementById('success-message');
+    if (successDiv) {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        setTimeout(() => {
+            successDiv.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+
+
+function removeItem(index) {
+    fetch('/sales/remove-from-cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+            index: index
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Remove the row from the cart table
+            const cartItemsTable = document.getElementById('cart-items');
+            cartItemsTable.removeChild(cartItemsTable.children[index]);
+
+            // Update the gross total
+            updateGrossTotal(-data.removedItemTotal);
+        }
+    });
+}
+
+
+
+
+function checkout() {
+    const paymentMethod = document.getElementById('payment-method').value;
+    
+    fetch('/sales/checkout/', {
+        method: 'POST',
+        body: JSON.stringify({
+            payment_method: paymentMethod
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Sale completed ! Sale ID: ' + data.sale_id);
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}
