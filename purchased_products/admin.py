@@ -76,6 +76,7 @@ class PurchasedProductsForm(forms.ModelForm):
         model = PurchasedProducts
         fields = '__all__'
 
+
 class PurchasedProductsAdmin(admin.ModelAdmin):
     form = PurchasedProductsForm
     list_display = ['purchased_invoice', 'product', 'product_name', 'price_per_unit', 
@@ -241,7 +242,7 @@ admin.site.register(Stock, StockAdmin)
 
 
 class SaleAdmin(admin.ModelAdmin):
-    list_display = ('sale_id', 'product_name', 'quantity', 'current_sell_price', 'total', 'payment_method', 'created_at', 'actions_button')
+    list_display = ('sale_id', 'product_ID', 'product_name', 'quantity', 'current_sell_price', 'total', 'payment_method', 'created_at', 'category_id', 'category_name')
     list_filter = ('sale_id', 'payment_method', 'created_at')
     search_fields = ('sale_id', 'product_name')
     readonly_fields = ('product_name', 'category_id', 'category_name', 'current_sell_price', 'total')
@@ -268,3 +269,4 @@ class SaleAdmin(admin.ModelAdmin):
         return False  # Prevent manual addition through admin
 
 admin.site.register(Sale, SaleAdmin)
+

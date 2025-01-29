@@ -72,9 +72,9 @@ class ProductPricing(models.Model):
             self.category_name = self.product_ID.category.category_name  # Fetch category_name
             price_per_unit = self.product_ID.purchased_products.order_by('-purchased_invoice').first().price_per_unit
             self.sell_price = price_per_unit + (price_per_unit * (self.profit_margin / 100))
-            print(price_per_unit)
-            print(self.profit_margin)            
-            print(self.sell_price)
+            # print(price_per_unit)
+            # print(self.profit_margin)            
+            # print(self.sell_price)
         super(ProductPricing, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -144,7 +144,7 @@ class Stock(models.Model):
 
 
 class Sale(models.Model):
-    SALE_ID_LENGTH = 10
+    SALE_ID_LENGTH = 16
     
     sale_id = models.CharField(max_length=SALE_ID_LENGTH)
     product_ID = models.ForeignKey('Products', on_delete=models.CASCADE)
@@ -158,7 +158,7 @@ class Sale(models.Model):
         ('Cash', 'Cash'),
         ('Card', 'Card'),
         ('Online', 'Online'),
-    )
+    ) 
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHODS, default='Cash')
     created_at = models.DateTimeField(auto_now_add=True)
 

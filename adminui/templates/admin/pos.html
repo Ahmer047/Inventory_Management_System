@@ -60,7 +60,7 @@
                     <option value="Card">Card</option>
                     <option value="Online">Online</option>
                 </select>
-                <button onclick="checkout()" class="btn btn-success">Checkout</button>
+                <button onclick="checkout()" class="btn btn-success mt-3">Checkout</button>
             </div>
         </div>
     </div>
@@ -195,13 +195,15 @@ function removeItem(index) {
 }
 
 
-
-
 function checkout() {
     const paymentMethod = document.getElementById('payment-method').value;
     
     fetch('/sales/checkout/', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
         body: JSON.stringify({
             payment_method: paymentMethod
         })
@@ -209,10 +211,17 @@ function checkout() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            alert('Sale completed ! Sale ID: ' + data.sale_id);
-            location.reload();
+            alert('Sale completed! Sale ID: ' + data.sale_id);
+            location.reload();  // Reload the page to clear the cart
+        } else {
+            alert('Error: ' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error during checkout');
     });
 }
+
 </script>
 {% endblock %}
