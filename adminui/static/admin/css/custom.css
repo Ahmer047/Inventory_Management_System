@@ -14,6 +14,33 @@
 }
 
 
+#jazzy-tabs.nav.nav-tabs {
+    background-color: steelblue !important;
+}
+
+#jazzy-tabs .nav-link.active {
+    color: steelblue !important;
+}
+
+#jazzy-sidebar .brand-link {
+    background-color: #417690 !important;
+}
+
+#jazzy-sidebar .brand-link.active {
+    color: white !important; 
+}
+
+/* 
+#jazzy-tabs.nav.nav-tabs .nav-link.active {
+    color: steelblue !important;
+}
+
+#jazzy-tabs.nav.nav-tabs .nav-item .nav-link.active {
+    color: steelblue !important;
+} */
+
+
+
 /* #navbar-nav {
     border-style: none;
     color: #417690;

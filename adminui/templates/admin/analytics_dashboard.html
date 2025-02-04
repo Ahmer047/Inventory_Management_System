@@ -1,0 +1,218 @@
+{# templates/admin/analytics_dashboard.html #}
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center">
+                    <h1 class="card-title font-weight-bold" style="font-size: 2.5rem;">Analytics Dashboard</h1>
+                </div>
+                <div class="card-body">
+                    <!-- Stock Section -->
+                    <div class="stock-section mb-5">
+                        <h2 class="text-center font-weight-bold mb-4" style="font-size: 2rem;">Stock Overview</h2>
+                        <div class="row">
+                            <!-- Stock Distribution Pie Chart -->
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-info text-white">
+                                        <h4 class="card-title">Stock Distribution by Product</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="stockPieChart" height="200"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Category Distribution Bar Chart -->
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-success text-white">
+                                        <h4 class="card-title">Stock by Category</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="categoryBarChart" height="200"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Section -->
+                    <div class="sales-section">
+                        <h2 class="text-center font-weight-bold mb-4" style="font-size: 2rem;">Sales Overview</h2>
+                        <div class="row">
+                            <!-- Daily Sales Line Chart -->
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-warning text-white">
+                                        <h4 class="card-title">Daily Sales</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="salesLineChart" height="100"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sales by Product Bar Chart -->
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-danger text-white">
+                                        <h4 class="card-title">Sales by Product</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="salesByProductChart" height="100"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script>
+// Function to initialize pie chart
+function initPieChart() {
+    fetch('../api/stock-data/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('stockPieChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Product Stock Distribution'
+                        }
+                    }
+                }
+            });
+        });
+}
+
+// Function to initialize bar chart
+function initBarChart() {
+    fetch('../api/category-data/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('categoryBarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Stock by Category'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+}
+
+// Function to initialize line chart for sales data
+function initSalesLineChart() {
+    fetch('../api/sales-data/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('salesLineChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Daily Sales'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+}
+
+// Function to initialize bar chart for sales by product
+function initSalesByProductChart() {
+    fetch('../api/sales-by-product/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('salesByProductChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Sales by Product'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+}
+
+// Initialize charts when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initPieChart();
+    initBarChart();
+    initSalesLineChart();
+    initSalesByProductChart();  // Initialize the new chart
+});
+</script>
+{% endblock %}

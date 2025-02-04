@@ -4,12 +4,14 @@ from django.db.models.signals import post_save
 from django.contrib.admin import ModelAdmin
 from django.dispatch import receiver
 from django.shortcuts import redirect
-from .models import PurchasedProducts, ProductPricing, Stock, Sale
+from .models import PurchasedProducts, ProductPricing, ReturnSale, Stock, Sale
 from django.db.models import Max
 from django.db import transaction
 
 
 logger = logging.getLogger(__name__)
+
+########################################  Purchase item Signal #############################################
 
 @receiver(post_save, sender=PurchasedProducts)
 def create_or_update_product_pricing(sender, instance, created, **kwargs):
@@ -94,7 +96,9 @@ def create_or_update_stock(product, piece_quantity):
     except Exception as e:
         logger.error(f"Error in create_or_update_stock: {e}")
 
-################################################################
+
+
+########################################  New Sale Signal #############################################
 
 
 
@@ -104,12 +108,61 @@ def update_stock_on_sale(sender, instance, created, **kwargs):
     Signal to update the stock quantity when a sale is made.
     """
     if created:  # Only trigger when a new Sale is created
-        product = instance.product_ID  # Get the product from the sale
-        stock = Stock.objects.filter(product_ID=product).first()  # Get the corresponding stock
+        try:
+            with transaction.atomic():
+                stock = Stock.objects.select_for_update().get(product_ID=instance.product_ID)
+                stock.available_stock -= instance.quantity
+                stock.save()
+        except Stock.DoesNotExist:
+            logger.error(f"Stock not found for product {instance.product_ID}")
+        except Exception as e:
+            logger.error(f"Error updating stock on sale: {e}")
 
-        if stock:
-            # Subtract the sold quantity from the available stock
-            stock.available_stock -= instance.quantity
-            stock.save()
+
+# @receiver(post_save, sender=Sale)
+# def update_stock_on_sale(sender, instance, created, **kwargs):
+#     """
+#     Signal to update the stock quantity when a sale is made.
+#     """
+#     if created:  # Only trigger when a new Sale is created
+#         product = instance.product_ID  # Get the product from the sale
+#         stock = Stock.objects.filter(product_ID=product).first()  # Get the corresponding stock
+
+#         if stock:
+#             # Subtract the sold quantity from the available stock
+#             stock.available_stock -= instance.quantity
+#             stock.save()
         
+
+########################################  Return Sale Signal #############################################
+
+
+@receiver(post_save, sender=ReturnSale)
+def update_stock_on_return(sender, instance, created, **kwargs):
+    """
+    Signal to update stock quantity when a return sale is created
+    """
+    if created:  # Only run on new return sale creation
+        try:
+            with transaction.atomic():
+                # Get or create stock record for the product
+                stock, created = Stock.objects.get_or_create(
+                    product_ID=instance.product_ID,
+                    defaults={
+                        'available_stock': 0,
+                        'product_name': instance.product_name,
+                        'category_id': instance.category_id,
+                        'category_name': instance.category_name,
+                        'current_sell_price': instance.unit_price
+                    }
+                )
+                
+                # Update the available stock
+                stock.available_stock += instance.return_quantity
+                stock.save()
+                
+        except Exception as e:
+            # Log the error - you might want to add proper logging here
+            print(f"Error updating stock on return: {str(e)}")
+            raise
 

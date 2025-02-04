@@ -1,14 +1,20 @@
+from datetime import timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from .models import ProductPricing, Products, Stock, category, PurchasedProducts, Sale
+from .models import DashboardAnalytics, ProductPricing, Products, Stock, category, PurchasedProducts, Sale, ReturnSale
 from django.forms import ValidationError
 from django import forms
 from django.shortcuts import redirect
 from django.urls import path
 from django.utils.html import format_html
-from django.db.models import Sum
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.contrib import messages
+from django.http import JsonResponse
+from django.template.response import TemplateResponse
+from django.db.models import Count, Sum
 
 
 #============================================== Admin Category View Model ==============================================#
@@ -211,35 +217,7 @@ class StockAdmin(admin.ModelAdmin):
 admin.site.register(Stock, StockAdmin)
 
 
-
 #============================================== Admin Sales View Model ==============================================#
-
-
-# from django.contrib import admin
-# from .models import Sale
-
-# class SaleAdmin(admin.ModelAdmin):
-#     list_display = ('sale_id', 'product_ID', 'product_name', 'category_name', 'current_sell_price', 'quantity', 'total', 'payment_method')
-#     search_fields = ('sale_id', 'product_name', 'category_name')
-
-#     # Exclude fields that should not be manually edited
-#     exclude = ('product_name', 'category_id', 'category_name', 'current_sell_price', 'total')
-
-#     def save_model(self, request, obj, form, change):
-#         # Auto-populate fields from Stock before saving
-#         stock_entry = Stock.objects.filter(product_ID=obj.product_ID).first()
-#         if stock_entry:
-#             obj.product_name = stock_entry.product_name
-#             obj.category_id = stock_entry.category_id
-#             obj.category_name = stock_entry.category_name
-#             obj.current_sell_price = stock_entry.current_sell_price
-#             obj.total = obj.quantity * obj.current_sell_price
-#         super().save_model(request, obj, form, change)
-
-# # Register the Sale model in the admin
-# admin.site.register(Sale, SaleAdmin)
-
-
 
 class SaleAdmin(admin.ModelAdmin):
     list_display = ('sale_id', 'product_ID', 'product_name', 'quantity', 'current_sell_price', 'total', 'payment_method', 'created_at', 'category_id', 'category_name')
@@ -269,4 +247,219 @@ class SaleAdmin(admin.ModelAdmin):
         return False  # Prevent manual addition through admin
 
 admin.site.register(Sale, SaleAdmin)
+
+
+#============================================== Admin Return Sales View Model ==============================================#
+
+
+@admin.register(ReturnSale)
+class ReturnSaleAdmin(admin.ModelAdmin):
+    list_display = ('return_sale_id', 'sale', 'product_name', 'category_name', 
+                   'return_quantity', 'total_return_amount', 'return_reason', 'created_at')
+    list_filter = ('return_reason', 'category_name', 'created_at')
+    search_fields = ('return_sale_id', 'sale__sale_id', 'product_name', 'reason_description')
+    readonly_fields = ('return_sale_id', 'product_name', 'category_id', 
+                      'category_name', 'unit_price', 'total_return_amount')
+    
+    fieldsets = (
+        ('Return Information', {
+            'fields': ('return_sale_id','sale')
+        }),
+        ('Product Details', {
+            'fields': ('product_ID','product_name','category_id','category_name','unit_price')
+        }),
+        ('Return Details', {
+            'fields': ('return_quantity','total_return_amount','return_reason','reason_description')
+        })
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        # Make all fields readonly if this is an existing object
+        if obj:  # editing an existing object
+            return self.readonly_fields + ('sale', 'product_ID', 'return_quantity', 
+                                         'return_reason', 'reason_description')
+        return self.readonly_fields
+
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of returns older than 24 hours
+        if obj and (timezone.now() - obj.created_at).days >= 1:
+            return False
+        return True
+
+    def save_model(self, request, obj, form, change):
+        try:
+            if not change:  # New return sale
+                # Validate return quantity against original sale
+                if obj.return_quantity > obj.sale.quantity:
+                    raise ValidationError(
+                        f"Return quantity ({obj.return_quantity}) cannot be greater than "
+                        f"original sale quantity ({obj.sale.quantity})"
+                    )
+                
+                # Save the return sale - this will trigger our signal
+                super().save_model(request, obj, form, change)
+                
+                # Add success message
+                messages.success(
+                    request, 
+                    f'Return sale {obj.return_sale_id} created successfully. '
+                    f'Stock updated with {obj.return_quantity} units.'
+                )
+            
+            else:  # Existing return sale
+                if (timezone.now() - obj.created_at).days < 1:
+                    original_obj = ReturnSale.objects.get(pk=obj.pk)
+                    
+                    # Check if return quantity was modified
+                    if original_obj.return_quantity != obj.return_quantity:
+                        # Validate new return quantity
+                        if obj.return_quantity > obj.sale.quantity:
+                            raise ValidationError(
+                                f"Return quantity ({obj.return_quantity}) cannot be greater than "
+                                f"original sale quantity ({obj.sale.quantity})"
+                            )
+                    
+                    super().save_model(request, obj, form, change)
+                    messages.success(request, f'Return sale {obj.return_sale_id} updated successfully.')
+                else:
+                    messages.error(
+                        request, 
+                        'Cannot modify return sale after 24 hours of creation.'
+                    )
+
+        except ValidationError as e:
+            messages.error(request, str(e))
+            raise
+        except Exception as e:
+            messages.error(request, f'Error processing return sale: {str(e)}')
+            raise
+
+    class Media:
+        css = {
+            'all': ('admin/css/forms.css',)
+        }
+
+
+#============================================== Dashboard Analytics View Model ==============================================#
+
+
+class DashboardAnalyticsAdmin(admin.ModelAdmin):
+    """Admin class for analytics dashboard"""
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('', self.dashboard_redirect_view, name='analytics-dashboard-redirect'),
+            path('dashboard/', self.admin_dashboard_view, name='analytics-dashboard'),
+            path('api/stock-data/', self.get_stock_data, name='stock-data'),
+            path('api/category-data/', self.get_category_data, name='category-data'),
+            path('api/sales-data/', self.get_sales_data, name='sales-data'),  # New endpoint
+            path('api/sales-by-product/', self.get_sales_by_product, name='sales-by-product'),  # New endpoint
+        ]
+        return custom_urls + urls
+    
+    def dashboard_redirect_view(self, request):
+        """Redirect from base URL to dashboard URL"""
+        from django.shortcuts import redirect
+        return redirect('admin:analytics-dashboard')
+
+
+    def admin_dashboard_view(self, request):
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Analytics Dashboard'
+        }
+        return TemplateResponse(request, 'admin/analytics_dashboard.html', context)
+    
+    def get_stock_data(self, request):
+        # Get stock data for pie chart
+        from .models import Stock
+        stock_data = Stock.objects.values(
+            'product_name'
+        ).annotate(
+            quantity=Sum('available_stock')
+        ).filter(quantity__gt=0)
+        
+        return JsonResponse({
+            'labels': [item['product_name'] for item in stock_data],
+            'datasets': [{
+                'data': [float(item['quantity']) for item in stock_data],
+                'backgroundColor': [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+                ]
+            }]
+        })
+    
+    def get_category_data(self, request):
+        # Get category-wise stock data for bar chart
+        from .models import Stock
+        category_data = Stock.objects.values(
+            'category_name'
+        ).annotate(
+            total_items=Count('id'),
+            total_quantity=Sum('available_stock')
+        )
+        
+        return JsonResponse({
+            'labels': [item['category_name'] for item in category_data],
+            'datasets': [{
+                'label': 'Total Quantity',
+                'data': [float(item['total_quantity']) for item in category_data],
+                'backgroundColor': '#36A2EB'
+            }]
+        })
+    
+
+    def get_sales_data(self, request):
+        # Get sales data for the last 30 days
+        from .models import Sale
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=30)
+        
+        sales_data = Sale.objects.filter(
+            created_at__range=(start_date, end_date)
+        ).values('created_at__date').annotate(
+            total_sales=Sum('total')
+        ).order_by('created_at__date')
+        
+        return JsonResponse({
+            'labels': [item['created_at__date'].strftime('%Y-%m-%d') for item in sales_data],
+            'datasets': [{
+                'label': 'Total Sales',
+                'data': [float(item['total_sales']) for item in sales_data],
+                'backgroundColor': '#4BC0C0',
+                'borderColor': '#4BC0C0',
+                'fill': False
+            }]
+        })
+    
+    def get_sales_by_product(self, request):
+        # Get sales data by product
+        from .models import Sale
+        sales_by_product = Sale.objects.values(
+            'product_name'
+        ).annotate(
+            total_sales=Sum('total'),
+            total_quantity=Sum('quantity')
+        ).order_by('-total_sales')  # Sort by highest selling product
+
+        return JsonResponse({
+            'labels': [item['product_name'] for item in sales_by_product],
+            'datasets': [{
+                'label': 'Total Sales',
+                'data': [float(item['total_sales']) for item in sales_by_product],
+                'backgroundColor': '#FF6384',
+                'borderColor': '#FF6384',
+                'fill': False
+            }]
+        })
+    
+    def has_add_permission(self, request):
+        return False  # Prevent manual addition through admin
+    
+admin.site.register(DashboardAnalytics, DashboardAnalyticsAdmin)
+
+
+#============================================== ****************************** ==============================================#
 

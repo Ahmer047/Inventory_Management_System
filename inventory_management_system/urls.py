@@ -22,8 +22,9 @@ from inventory_management_system import views
 admin.site.index_title = "Dashboard"
 
 urlpatterns = [
-    #path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
     path('', views.homepage),
+    #path('admin_tools_stats/', include('admin_tools_stats.urls')),
     path('sales/', include('purchased_products.urls')),  # Ensure this exists
+
 ]

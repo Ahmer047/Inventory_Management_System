@@ -1,6 +1,7 @@
 from django.db import models
 from suppliers.models import supplier
-
+import random
+import string
 
 # Create your models here.
 
@@ -108,40 +109,6 @@ class Stock(models.Model):
 
 
 #============================================== Sales Model ==============================================#
-    
-
-# class Sale(models.Model):
-#     SALE_ID_LENGTH = 10  # Define a standard length for Sale_ID
-    
-#     sale_id = models.CharField(max_length=SALE_ID_LENGTH)  # Repeatable Sale_ID for multiple products
-#     product_ID = models.ForeignKey('Products', on_delete=models.CASCADE)  # Link to product
-#     product_name = models.CharField(max_length=255, editable=False)  # Auto-filled from Stock
-#     category_id = models.IntegerField(editable=False)  # Auto-filled from Stock
-#     category_name = models.CharField(max_length=255, editable=False)  # Auto-filled from Stock
-#     current_sell_price = models.DecimalField(max_digits=10, decimal_places=2, editable=False)  # Auto-filled from Stock
-#     quantity = models.PositiveIntegerField()  # Quantity purchased
-#     total = models.DecimalField(max_digits=10, decimal_places=2, editable=False)  # Calculated total
-#     PAYMENT_METHODS = (
-#         ('Cash', 'Cash'),
-#         ('Card', 'Card'),
-#         ('Online', 'Online'),
-#     )
-#     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHODS, default='Cash')
-
-#     def save(self, *args, **kwargs):
-#         # Auto-populate fields from Stock
-#         stock_entry = Stock.objects.filter(product_ID=self.product_ID).first()
-#         if stock_entry:
-#             self.product_name = stock_entry.product_name
-#             self.category_id = stock_entry.category_id
-#             self.category_name = stock_entry.category_name
-#             self.current_sell_price = stock_entry.current_sell_price
-#             self.total = self.quantity * self.current_sell_price  # Calculate total cost
-#         super(Sale, self).save(*args, **kwargs)
-
-#     def __str__(self):
-#         return f"Sale ID: {self.sale_id} - Product: {self.product_name} - Total: {self.total}"
-
 
 class Sale(models.Model):
     SALE_ID_LENGTH = 16
@@ -174,3 +141,83 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"Sale ID: {self.sale_id} - Product: {self.product_name} - Total: {self.total}"
+    
+
+#============================================== Return Sales Model ==============================================#
+
+
+class ReturnSale(models.Model):
+    RETURN_ID_LENGTH = 16
+    return_sale_id = models.CharField(max_length=RETURN_ID_LENGTH, unique=True, editable=False)
+    sale = models.ForeignKey('Sale', on_delete=models.PROTECT)
+    product_ID = models.ForeignKey('Products', on_delete=models.PROTECT)
+    product_name = models.CharField(max_length=255, editable=False)
+    category_id = models.IntegerField(editable=False)
+    category_name = models.CharField(max_length=255, editable=False)
+    return_quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    total_return_amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    
+    RETURN_REASONS = (
+        ('Defective', 'Defective Product'),
+        ('WrongItem', 'Wrong Item Received'),
+        ('NotNeeded', 'Item Not Needed'),
+        ('SizeMismatch', 'Size/Fit Issue'),
+        ('QualityIssue', 'Quality Not As Expected'),
+        ('Other', 'Other Reason'),
+    )
+    return_reason = models.CharField(max_length=20, choices=RETURN_REASONS)
+    reason_description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def generate_return_id(self):
+        chars = string.ascii_uppercase + string.digits
+        while True:
+            return_id = 'RET' + ''.join(random.choice(chars) for _ in range(self.RETURN_ID_LENGTH - 3))
+            if not ReturnSale.objects.filter(return_sale_id=return_id).exists():
+                return return_id
+    
+    
+    def save(self, *args, **kwargs):
+        # Generate return_sale_id if it doesn't exist
+        if not self.return_sale_id:
+            self.return_sale_id = self.generate_return_id()
+
+        # Get original sale details
+        try:
+            # Find the sale with matching product
+            if self.sale and self.product_ID:
+                # Get the sale data directly from the sale object
+                self.product_name = self.sale.product_name
+                self.category_id = self.sale.category_id
+                self.category_name = self.sale.category_name
+                self.unit_price = self.sale.current_sell_price
+                self.total_return_amount = self.return_quantity * self.unit_price
+                
+                # Validate return quantity against original sale
+                if self.return_quantity > self.sale.quantity:
+                    raise ValueError("Return quantity cannot be greater than original sale quantity")
+            else:
+                raise ValueError("Sale and Product information is required")
+                
+        except Exception as e:
+            raise ValueError(f"Error processing return: {str(e)}")
+            
+        super(ReturnSale, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Return ID: {self.return_sale_id} - Product: {self.product_name} - Qty: {self.return_quantity}"
+    
+
+
+#============================================== Dummy Model for Analytics ==============================================#
+
+class DashboardAnalytics(models.Model):
+    """Dummy model for analytics dashboard"""
+    title = models.CharField(max_length=200, default="Dashboard")
+    
+    class Meta:
+        verbose_name_plural = "Dashboard Analytics"
+        
+    def __str__(self):
+        return self.title
