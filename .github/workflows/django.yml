@@ -57,10 +57,10 @@ jobs:
     
     - name: Build Docker Compose
       run: |
-        docker-compose build
+        docker compose build
         
     - name: Test Docker Compose
       run: |
-        docker-compose up -d
-        docker-compose ps
-        docker-compose down
+        docker compose up -d
+        docker compose ps
+        docker compose down
