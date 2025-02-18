@@ -9,6 +9,7 @@ COPY . .
 
 # Create staticfiles directory and collect static files
 RUN mkdir -p staticfiles
+
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000

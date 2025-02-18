@@ -61,8 +61,10 @@ ROOT_URLCONF = 'inventory_management_system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join
-        (BASE_DIR / "adminui/templates")
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'adminui/templates'),  # Add this line
+            #os.path.join(BASE_DIR / "adminui/templates")
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -143,14 +145,15 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
+    os.path.join(BASE_DIR, "adminui/static"),  # Add this line
+    #os.path.join(BASE_DIR, "static"),
 ]
 
 # Update ALLOWED_HOSTS to include your domain
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 JAZZMIN_SETTINGS = {
-        "custom_css": "adminui/static/admin/css/custom.css",
+        "custom_css": "admin/css/custom.css",
 
         "show_ui_builder": False,
 
